@@ -1,0 +1,62 @@
+/* always show scroll-bar */
+html {
+    overflow-y:scroll;
+}
+
+/* background-color of everything */
+body {
+    background-color: #fff;
+}
+
+/* big optimate word */ 
+.caption {
+    color: #373D3F;
+    font-family: "Satisfy";
+    font-size: 500%;
+    margin: auto;
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+/* top navigation */
+.navbar {
+    background-color: #552583;
+    color: #fff;
+    font-size: 120%;
+}
+
+/* active top navigation link */
+.navbar-default .navbar-nav>.active>a, 
+.navbar-default .navbar-nav>.active>a:focus, 
+.navbar-default .navbar-nav>.active>a:hover {
+    background-color: #552583;
+    color: #fff;
+    font-weight: bold;
+}
+
+/* non-active hovered links */
+.navbar-default .navbar-nav>li>a:focus, 
+.navbar-default .navbar-nav>li>a:hover {
+    background-color: #552583;
+    color: #fff;
+    font-weight: bold;
+}
+
+/* non-active non-hovered links */
+.navbar-default .navbar-nav>li>a {
+    color: #fff;
+}
+
+
+/* place for content */
+.tab-content {
+    background-color: #F2F3F4;
+    border-bottom: 1px solid #ddd;
+    border-top: 1px solid #ddd;
+    padding: 25px;
+    margin-left: 25px;
+    margin-right: 25px;
+    margin-bottom: 25px;
+}
+
