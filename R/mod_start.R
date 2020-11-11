@@ -12,9 +12,8 @@ mod_start_ui <- function(id){
   fluidPage(
     fluidRow(
       shinydashboard::box(width = 4, 
-        HTML("<p>On your right, you can see a questionnaire.</p> 
-        <p>This questionnaire is the basis to create <b>optimates</b>. 
-        Optimates are pairs of people that are the best matches for each other in the context of the whole <b>population</b>.</p>
+        HTML("<p>The questionnaire on the right is the basis to create <b>optimates</b>. 
+        Optimates are pairs of people that are the best matches for each other in the whole <b>population</b>.</p>
         <p>If you want to check who's your optimate, please fill in the questionnaire and go to the Optimate section of the app.</p>")
       ),  
       shinydashboard::box(width = 8,
@@ -64,7 +63,12 @@ mod_start_ui <- function(id){
         shinyWidgets::radioGroupButtons(ns("q10"), label = h4("[10/10] Board game:"),
         choiceNames = c("Chess", "Monopoly", "Scrabble", "Jenga"),
         justified = TRUE, individual = TRUE, choiceValues = 1:4),
-      
+        
+        HTML("<h4>Message</h4>"),
+        textAreaInput(ns("message"), label = NULL, width = "600px", rows = 4),
+        HTML("<span style='font-size: x-small; font-weight: bold;'>
+        If you want, please leave a message to your optimate.</span>"),
+        
         HTML("<div style='text-align: center;'>"),
         actionButton(ns("button"), label = "Send", width = "200px", class = "btn btn-success", 
                      style = "color: #fff; margin-top: 15px; margin-bottom: 15px;"),
@@ -88,34 +92,38 @@ mod_start_server <- function(input, output, session){
         "Nickname can't be empty. Please provide a nickname.", footer = modalButton("OK"), fade = FALSE
       ))
     } else {
-      # Answers are added to the answers table
-      users_answers <- data.frame(
-        username = input$username,
-        q1 = input$q1,
-        q2 = input$q2,
-        q3 = input$q3,
-        q4 = input$q4,
-        q5 = input$q5,
-        q6 = input$q6,
-        q7 = input$q7,
-        q8 = input$q8,
-        q9 = input$q9,
-        q10 = input$q10,
-        stringsAsFactors = FALSE
-      )
-      SaveData(data = users_answers, databaseName = "optimate_schema", table = "answers")
-      
-      answers <- LoadData(databaseName = "optimate_schema", table = "answers")
-      scores.matrix <- ReturnScoresMatrix(answers)
-      optimal.pairs <- ReturnOptimalPairs(scores.matrix)
-      matches <- ReturnMatches(scores.matrix, optimal.pairs)
-      SaveData(data = matches, databaseName = "optimate_schema", table = "matches")
-      
-      showModal(modalDialog(
-        title = "Success!",
-        "Your answers have been saved. Now, please go to the Optimate section to check your pair.", 
-        footer = modalButton("OK")
-      ))
+      # Nickname must be unique
+      current.usernames <- LoadCurrentUsernames()
+      if(input$username %in% current.usernames) {
+        showModal(modalDialog(title = "Nickname is already taken.",
+          "This nickname is already taken. Please provide another nickname.", 
+          footer = modalButton("OK"), fade = FALSE
+        ))
+      } else {
+        # Answers are added to the answers table
+        users.answers <- data.frame(
+          username = input$username,
+          q1 = input$q1,
+          q2 = input$q2,
+          q3 = input$q3,
+          q4 = input$q4,
+          q5 = input$q5,
+          q6 = input$q6,
+          q7 = input$q7,
+          q8 = input$q8,
+          q9 = input$q9,
+          q10 = input$q10,
+          message = input$message,
+          stringsAsFactors = FALSE
+        )
+        
+        PrepareAndSaveToDB(users.answers)
+        
+        showModal(modalDialog(title = "Success!",
+          "Your answers have been saved. Now, please go to the Optimate section to check your pair.", 
+          footer = modalButton("OK")
+        ))
+      }
     }
   })  
 }

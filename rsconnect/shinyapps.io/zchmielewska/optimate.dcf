@@ -5,8 +5,8 @@ account: zchmielewska
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 3210522
-bundleId: 3847892
+bundleId: 3848133
 url: https://zchmielewska.shinyapps.io/optimate/
-when: 1605110237.77157
+when: 1605113614.1268
 asMultiple: FALSE
 asStatic: FALSE

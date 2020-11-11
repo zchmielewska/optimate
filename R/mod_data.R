@@ -42,8 +42,8 @@ mod_data_ui <- function(id){
 mod_data_server <- function(input, output, session){
   ns <- session$ns
   
-  answers <- LoadData(databaseName = "optimate_schema", table = "answers")
-  matches <- LoadData(databaseName = "optimate_schema", table = "matches")
+  answers <- LoadData(table = "answers")
+  matches <- LoadData(table = "matches")
   
   output$no.users <- shinydashboard::renderValueBox({
     shinydashboard::valueBox(

@@ -24,7 +24,7 @@ golem::add_module( name = "data" ) # Name of the module
 
 ## Add helper functions ----
 ## Creates ftc_* and utils_*
-golem::add_fct( "credentials" ) 
+golem::add_fct( "questionnaire" ) 
 golem::add_utils( "helpers" )
 
 ## External resources

@@ -1,28 +1,7 @@
 
-SaveData <- function(data, databaseName = "optimate_schema", table = "answers") {
+LoadData <- function(table) {
   # Connect to the database
-  db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = databaseName, host = options()$mysql$host, 
-                  port = options()$mysql$port, user = options()$mysql$user, 
-                  password = options()$mysql$password)
-  
-  # Construct the update query by looping over the data fields
-  query <- sprintf(
-    "INSERT INTO %s (%s) VALUES %s",
-    table, 
-    paste(names(data), collapse = ", "),
-    # paste(data, collapse = "', '")
-    paste0(apply(data, 1, function(x) paste0("('", paste0(x, collapse = "', '"), "')")), collapse = ", ")
-  )
-  
-  print(query)
-  # Submit the update query and disconnect
-  DBI::dbGetQuery(db, query)
-  RMySQL::dbDisconnect(db)
-}
-
-LoadData <- function(databaseName = "optimate_schema", table) {
-  # Connect to the database
-  db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = databaseName, host = options()$mysql$host, 
+  db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = options()$mysql$dbname, host = options()$mysql$host, 
                   port = options()$mysql$port, user = options()$mysql$user, 
                   password = options()$mysql$password)
   
@@ -33,6 +12,24 @@ LoadData <- function(databaseName = "optimate_schema", table) {
   data <- DBI::dbGetQuery(db, query)
   RMySQL::dbDisconnect(db)
   return(data)
+}
+
+LoadCurrentUsernames <- function() {
+  # Connect to the database
+  db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = "optimate_schema", host = options()$mysql$host, 
+                          port = options()$mysql$port, user = options()$mysql$user, 
+                          password = options()$mysql$password)
+  
+  # Construct the fetching query
+  query <- "SELECT DISTINCT username FROM optimate_schema.answers;"
+  
+  # Submit the fetch query and disconnect
+  data <- DBI::dbGetQuery(db, query)
+  RMySQL::dbDisconnect(db)
+  
+  current.usernames <- data$username
+  
+  return(current.usernames)
 }
 
 ReturnScoresMatrix <- function(answers) {
@@ -102,28 +99,15 @@ ReturnMatches <- function(scores.matrix, optimal.pairs) {
   
   optimal.pairs.long <- tibble::as_tibble(optimal.pairs, rownames = NA) %>%
     tibble::rownames_to_column(var = "username1") %>%
-    tidyr::pivot_longer(cols = -c("username1"), names_to = "username2", values_to = "match_indicator")
+    tidyr::pivot_longer(cols = -c("username1"), names_to = "username2", values_to = "match_indicator") %>% 
+    dplyr::mutate(match_indicator = as.integer(match_indicator))
   
-  
-  matches <- dplyr::left_join(optimal.pairs.long, scores.matrix.long, by = c("username1", "username2")) %>% 
+  matches <- dplyr::left_join(optimal.pairs.long, scores.matrix.long, by = c("username1", "username2")) %>%
+    dplyr::filter(username1 != username2) %>% 
     dplyr::mutate(when_added = format(Sys.time(), "%Y%m%d_%H%M"))
   
   return(matches)  
 }
-
-survey.table <- tibble::tribble(
-  ~question,           ~answer1,    ~answer2,       ~answer3,          ~answer4,
-  "Season",            "Winter",    "Spring",       "Summer",          "Autumn",
-  "Colour",            "Red",       "Green",        "Blue",            "Yellow",
-  "Superhero",         "Superman",  "Wonder Woman", "Batman",          "Spider-Man",
-  "Food",              "Pizza",     "Salad",        "Burger",          "Pasta",
-  "TV serie",          "Friends",   "Breaking Bad", "Game of Thrones", "Family Guy",
-  "Pet",               "Cat",       "Dog",          "Fish",            "Parrot",
-  "Sport",             "Football",  "Tennis",       "Swimming",        "Skiing",
-  "Ice cream flavour", "Chocolate", "Vanilla",      "Strawberry",      "Pistachio",
-  "Outdoor place",     "Beach",     "Forest",       "City",            "Mountains",
-  "Board game",        "Chess",     "Monopoly",     "Scrabble",        "Jenga"
-)
 
 ReturnUsersAnswers <- function(username, answers, survey.table) {
   users.answers <- NULL
@@ -139,4 +123,47 @@ ReturnUsersAnswers <- function(username, answers, survey.table) {
   }
   
   return(users.answers)
+}
+
+PrepareAndSaveToDB <- function(users.answers) {
+  # Open connection
+  db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = options()$mysql$dbname, host = options()$mysql$host, 
+                          port = options()$mysql$port, user = options()$mysql$user, 
+                          password = options()$mysql$password)
+  
+  # Sanitize strings
+  users.answers$username <- RMySQL::dbEscapeStrings(db, users.answers$username)
+  users.answers$message  <- RMySQL::dbEscapeStrings(db, users.answers$message)
+  
+  # Get current answers and add new ones
+  query <- "SELECT * FROM answers"
+  current.answers <- DBI::dbGetQuery(db, query)
+  # answers <- current.answers
+  answers <- rbind(current.answers, users.answers)
+  
+  # Retrieve optimates
+  scores.matrix <- ReturnScoresMatrix(answers)
+  optimal.pairs <- ReturnOptimalPairs(scores.matrix)
+  matches <- ReturnMatches(scores.matrix, optimal.pairs)
+  
+  # Save data to DB
+  query.answers <- sprintf(
+    "INSERT INTO answers (%s) VALUES %s",
+    paste(names(users.answers), collapse = ", "),
+    paste0(apply(users.answers, 1, function(x) paste0("('", paste0(x, collapse = "', '"), "')")), collapse = ", ")
+  )
+  
+  query.matches <- sprintf(
+    "INSERT INTO matches (%s) VALUES %s",
+    paste(names(matches), collapse = ", "),
+    paste0(apply(matches, 1, function(x) paste0("('", paste0(x, collapse = "', '"), "')")), collapse = ", ")
+  )
+  
+  # Submit the update query and disconnect
+  DBI::dbGetQuery(db, query.answers)
+  DBI::dbGetQuery(db, query.matches)
+  
+  RMySQL::dbDisconnect(db)
+  
+  return(invisible(NULL))
 }

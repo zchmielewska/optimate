@@ -43,8 +43,21 @@ mod_optimate_server <- function(input, output, session){
   ns <- session$ns
  
   observeEvent(input$button, {
-    matches <- LoadData(databaseName = "optimate_schema", table = "matches")
-    answers <- LoadData(databaseName = "optimate_schema", table = "answers")
+    
+    ### in development
+    
+    db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = options()$mysql$dbname, host = options()$mysql$host, 
+                            port = options()$mysql$port, user = options()$mysql$user, 
+                            password = options()$mysql$password)
+    
+    query <- "SELECT * FROM answers"
+    
+    # Submit the fetch query and disconnect
+    data <- DBI::dbGetQuery(db, query)
+    
+    
+    matches <- LoadData(table = "matches")
+    answers <- LoadData(table = "answers")
     matches <- tibble::as_tibble(matches)
     max.when_added <- matches %>% dplyr::select(when_added) %>% dplyr::pull() %>% max()
     latest.matches <- dplyr::filter(matches, when_added == max.when_added)
