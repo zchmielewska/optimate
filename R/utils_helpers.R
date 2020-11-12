@@ -138,7 +138,6 @@ PrepareAndSaveToDB <- function(users.answers) {
   # Get current answers and add new ones
   query <- "SELECT * FROM answers"
   current.answers <- DBI::dbGetQuery(db, query)
-  # answers <- current.answers
   answers <- rbind(current.answers, users.answers)
   
   # Retrieve optimates
