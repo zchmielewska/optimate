@@ -104,7 +104,7 @@ ReturnMatches <- function(scores.matrix, optimal.pairs) {
   
   matches <- dplyr::left_join(optimal.pairs.long, scores.matrix.long, by = c("username1", "username2")) %>%
     dplyr::filter(username1 != username2) %>% 
-    dplyr::mutate(when_added = format(Sys.time(), "%Y%m%d_%H%M"))
+    dplyr::mutate(when_added = format(Sys.time(), "%Y%m%d_%H%M%S"))
   
   return(matches)  
 }
@@ -113,13 +113,13 @@ ReturnUsersAnswers <- function(username, answers, survey.table) {
   users.answers <- NULL
   
   numerical.answers <- dplyr::filter(answers, username == !!username) %>% 
-    dplyr::select(-username) %>% 
+    dplyr::select(paste0("q", 1:10)) %>% 
     tidyr::pivot_longer(everything(), names_to = "question", values_to = "answer") %>% 
     dplyr::select(answer) %>% 
     dplyr::pull()
   
   for(i in 1:10) {
-    users.answers <- rbind(users.answers, (dplyr::pull(survey.table[i, paste0("answer", numerical.answers[i])])))
+    users.answers <- c(users.answers, (dplyr::pull(survey.table[i, paste0("answer", numerical.answers[i])])))
   }
   
   return(users.answers)
@@ -161,7 +161,7 @@ PrepareAndSaveToDB <- function(users.answers) {
   
   # Submit the update query and disconnect
   DBI::dbGetQuery(db, query.answers)
-  DBI::dbGetQuery(db, query.matches)
+  if(nrow(matches) > 0) DBI::dbGetQuery(db, query.matches)
   
   RMySQL::dbDisconnect(db)
   
