@@ -166,3 +166,20 @@ PrepareAndSaveToDB <- function(users.answers) {
   
   return(invisible(NULL))
 }
+
+LoadAnswersMatches <- function() {
+  answers.matches <- list()
+  db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = options()$mysql$dbname, host = options()$mysql$host, 
+                          port = options()$mysql$port, user = options()$mysql$user, 
+                          password = options()$mysql$password)
+  
+  query.answers <- "SELECT * FROM answers"
+  query.matches <- "SELECT * FROM matches WHERE when_added = (SELECT MAX(when_added) FROM matches)"
+  
+  answers.matches$answers <- DBI::dbGetQuery(db, query.answers)
+  answers.matches$matches <- DBI::dbGetQuery(db, query.matches)
+  
+  RMySQL::dbDisconnect(db)  
+  
+  return(answers.matches)
+}

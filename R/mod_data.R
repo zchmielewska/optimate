@@ -53,94 +53,94 @@ mod_data_ui <- function(id){
 #' data Server Function
 #'
 #' @noRd 
-mod_data_server <- function(input, output, session){
+mod_data_server <- function(input, output, session, parent_session){
   ns <- session$ns
   
-  db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = options()$mysql$dbname, host = options()$mysql$host, 
-                          port = options()$mysql$port, user = options()$mysql$user, 
-                          password = options()$mysql$password)
-  
-  query.answers <- "SELECT * FROM answers"
-  query.matches <- "SELECT * FROM matches WHERE when_added = (SELECT MAX(when_added) FROM matches)"
-  
-  answers <- DBI::dbGetQuery(db, query.answers)
-  matches <- DBI::dbGetQuery(db, query.matches)
-  
-  RMySQL::dbDisconnect(db)
-  
-  output$no.users <- shinydashboard::renderValueBox({
-    shinydashboard::valueBox(
-      value = nrow(answers),    
-      subtitle = "Users", icon = icon("user"), color = "olive"
-    )
-  })
-  
-  output$avg.opti <- shinydashboard::renderValueBox({
-    shinydashboard::valueBox(
-      value = matches %>% dplyr::filter(match_indicator == 1) %>% dplyr::select(score) %>% dplyr::pull() %>% mean() %>% round(2),
-      subtitle = "Optimates average score", icon = icon("trophy"), color = "orange"
-    )
-  })
-  
-  output$avg.overall <- shinydashboard::renderValueBox({
-    shinydashboard::valueBox(
-      value = matches %>% dplyr::select(score) %>% dplyr::pull() %>% mean() %>% round(2),
-      subtitle = "Overall average score", icon = icon("star"), color = "light-blue"
-    )
-  })
-  
-  output$scores.freq <- renderPlot({
-    
-    matches <- dplyr::mutate(matches, score = factor(score, levels = 0:10))
-    
-    if(input$type == "all") {
-      plot.matches <- matches  
-    } else if (input$type == "optimates") {
-      plot.matches <- dplyr::filter(matches, match_indicator == 1) 
-    }
-    
-    ggplot2::ggplot(plot.matches, ggplot2::aes(x = score)) +
-      ggplot2::geom_bar(ggplot2::aes(y = (..count..)/sum(..count..)), fill = "#552583", colour = "black", alpha = 0.4) +
-      ggplot2::scale_x_discrete(limits = as.factor(0:10), drop = FALSE) +
-      ggplot2::scale_y_continuous(labels = scales::percent) +
-      ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
-                     axis.text = ggplot2::element_text(size = 12)) + 
-      ggplot2::xlab(NULL) +
-      ggplot2::ylab(NULL)
+  # Data might get added so the page needs to be constantly fresh
+  observe({
+    if(parent_session$input$navbar.page.id == "Data") {
       
+      answers.matches <- LoadAnswersMatches()
+      answers <- answers.matches$answers
+      matches <- answers.matches$matches
+      
+      output$no.users <- shinydashboard::renderValueBox({
+        shinydashboard::valueBox(
+          value = nrow(answers),    
+          subtitle = "Users", icon = icon("user"), color = "olive"
+        )
+      })
+      
+      output$avg.opti <- shinydashboard::renderValueBox({
+        shinydashboard::valueBox(
+          value = matches %>% dplyr::filter(match_indicator == 1) %>% dplyr::select(score) %>% dplyr::pull() %>% mean() %>% round(2),
+          subtitle = "Optimates average score", icon = icon("trophy"), color = "orange"
+        )
+      })
+      
+      output$avg.overall <- shinydashboard::renderValueBox({
+        shinydashboard::valueBox(
+          value = matches %>% dplyr::select(score) %>% dplyr::pull() %>% mean() %>% round(2),
+          subtitle = "Overall average score", icon = icon("star"), color = "light-blue"
+        )
+      })
+      
+      output$scores.freq <- renderPlot({
+        
+        matches <- dplyr::mutate(matches, score = factor(score, levels = 0:10))
+        
+        if(input$type == "all") {
+          plot.matches <- matches  
+        } else if (input$type == "optimates") {
+          plot.matches <- dplyr::filter(matches, match_indicator == 1) 
+        }
+        
+        ggplot2::ggplot(plot.matches, ggplot2::aes(x = score)) +
+          ggplot2::geom_bar(ggplot2::aes(y = (..count..)/sum(..count..)), fill = "#552583", colour = "black", alpha = 0.4) +
+          ggplot2::scale_x_discrete(limits = as.factor(0:10), drop = FALSE) +
+          ggplot2::scale_y_continuous(labels = scales::percent) +
+          ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                         axis.text = ggplot2::element_text(size = 12)) + 
+          ggplot2::xlab(NULL) +
+          ggplot2::ylab(NULL)
+          
+      })
+      
+      
+      output$answers.freq <- renderPlot({
+        # Factors are needed for geom_bar
+        cols <- paste0("q", 1:10)
+        answers[cols] <- lapply(answers[cols], factor) 
+        
+        q.no <- which(survey.table$question == input$question)
+        x.var <- paste0("q", q.no)
+        
+        labels <- survey.table %>% 
+          dplyr::filter(question == input$question) %>% 
+          dplyr::select(answer1, answer2, answer3, answer4) %>% 
+          unlist(., use.names=FALSE)
+        
+        ggplot2::ggplot(answers, ggplot2::aes_string(x = x.var)) +
+          ggplot2::geom_bar(ggplot2::aes(y = (..count..)/sum(..count..)), fill = "#552583", colour = "black", alpha = 0.4) +
+          ggplot2::scale_x_discrete(limits = as.factor(1:4), labels = labels, drop = FALSE) +
+          ggplot2::scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
+          ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                         axis.text = ggplot2::element_text(size = 12),
+                         axis.title = ggplot2::element_text(size = 14)) + 
+          ggplot2::xlab(NULL) + 
+          ggplot2::ylab(NULL) + 
+          ggplot2::coord_flip()
+      })
+      
+      table.data <- matches %>% 
+        dplyr::mutate(match_indicator = as.logical(match_indicator)) %>% 
+        dplyr::select(`1st person` = username1, `2nd person` = username2, Score = score, `Optimates?` = match_indicator)
+      
+      output$table <- DT::renderDataTable(table.data, options = list(pageLength = 15))
+      
+  
+    }
   })
-  
-  
-  output$answers.freq <- renderPlot({
-    # Factors are needed for geom_bar
-    cols <- paste0("q", 1:10)
-    answers[cols] <- lapply(answers[cols], factor) 
-    
-    q.no <- which(survey.table$question == input$question)
-    x.var <- paste0("q", q.no)
-    
-    labels <- survey.table %>% 
-      dplyr::filter(question == input$question) %>% 
-      dplyr::select(answer1, answer2, answer3, answer4) %>% 
-      unlist(., use.names=FALSE)
-    
-    ggplot2::ggplot(answers, ggplot2::aes_string(x = x.var)) +
-      ggplot2::geom_bar(ggplot2::aes(y = (..count..)/sum(..count..)), fill = "#552583", colour = "black", alpha = 0.4) +
-      ggplot2::scale_x_discrete(limits = as.factor(1:4), labels = labels, drop = FALSE) +
-      ggplot2::scale_y_continuous(labels = scales::percent) +
-      ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
-                     axis.text = ggplot2::element_text(size = 12),
-                     axis.title = ggplot2::element_text(size = 14)) + 
-      ggplot2::xlab(NULL) + 
-      ggplot2::ylab(NULL) + 
-      ggplot2::coord_flip()
-  })
-  
-  table.data <- matches %>% 
-    dplyr::mutate(match_indicator = as.logical(match_indicator)) %>% 
-    dplyr::select(`1st person` = username1, `2nd person` = username2, Score = score, `Optimates?` = match_indicator)
-  
-  output$table <- DT::renderDataTable(table.data, options = list(pageLength = 15))
 }
     
 ## To be copied in the UI

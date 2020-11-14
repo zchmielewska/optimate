@@ -9,7 +9,7 @@ app_ui <- function(request) {
     # Leave this function for adding external resources
     golem_add_external_resources(),
     # List the first level UI elements here 
-    navbarPage(
+    navbarPage(id = "navbar.page.id",
       shinyWidgets::useShinydashboard(),
       header = div(class = "caption", "optimate"),
         tabPanel("Start",     mod_start_ui("start_ui_1")),

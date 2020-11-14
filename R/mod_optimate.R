@@ -74,13 +74,16 @@ mod_optimate_server <- function(input, output, session){
         footer = modalButton("OK"), fade = FALSE
       ))
       
-    # User can have no optmate if there is odd number of participants
+    # User can have no optimate if there is an odd number of participants
     } else if (nrow(optimate.result) == 0 & input$username %in% matches$username1) {  
       output$result <- renderUI(
         HTML("
         <h3>Damn!</h3>
         <p>Currently there is an <b>odd</b> number of participants.</p> 
         <p>Unfortunately, there is no optimate for you... Please come back later as there will be new participants joining!</p>"))
+      
+      output$compatibility.table <- NULL
+      output$message <- NULL
       
     } else {
       
@@ -94,15 +97,17 @@ mod_optimate_server <- function(input, output, session){
       
       # Table with comparison of answers
       output$compatibility.table <- renderTable({
-        compatibility.table <- data.frame(dplyr::select(survey.table, "question"), 
-                                     user1 = ReturnUsersAnswers(input$username, answers, survey.table),
-                                     user2 = ReturnUsersAnswers(optimate.result$username2, answers, survey.table),
-                                     stringsAsFactors = FALSE) %>% 
-          dplyr::mutate(Score = dplyr::if_else(user1 == user2, "10%", "0%"))
-        
-        colnames(compatibility.table) <- c("Favourite", input$username, optimate.result$username2, "Score")
-        
-        compatibility.table
+        isolate({
+          compatibility.table <- data.frame(dplyr::select(survey.table, "question"), 
+                                            user1 = ReturnUsersAnswers(input$username, answers, survey.table),
+                                            user2 = ReturnUsersAnswers(optimate.result$username2, answers, survey.table),
+                                            stringsAsFactors = FALSE) %>% 
+            dplyr::mutate(Score = dplyr::if_else(user1 == user2, "10%", "0%"))
+          
+          colnames(compatibility.table) <- c("Favourite", input$username, optimate.result$username2, "Score")
+          
+          compatibility.table  
+        })
       })
       
       # Optional message from the optimate
