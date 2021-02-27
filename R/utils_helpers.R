@@ -16,12 +16,12 @@ LoadData <- function(table) {
 
 LoadCurrentUsernames <- function() {
   # Connect to the database
-  db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = "optimate_schema", host = options()$mysql$host, 
+  db <- RMySQL::dbConnect(RMySQL::MySQL(), dbname = options()$mysql$dbname, host = options()$mysql$host, 
                           port = options()$mysql$port, user = options()$mysql$user, 
                           password = options()$mysql$password)
   
   # Construct the fetching query
-  query <- "SELECT DISTINCT username FROM optimate_schema.answers;"
+  query <- "SELECT DISTINCT username FROM answers;"
   
   # Submit the fetch query and disconnect
   data <- DBI::dbGetQuery(db, query)
